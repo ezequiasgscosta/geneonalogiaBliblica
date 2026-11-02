@@ -13,7 +13,7 @@ import { BarraPesquisa } from "@/components/BarraPesquisa";
 import { ContadorVisitas } from "@/components/ContadorVisitas";
 import { NoBiblico } from "@/components/NoBiblico";
 import { PainelPersonagem } from "@/components/PainelPersonagem";
-import type { BiblePerson, PersonEdge, PositionedPerson } from "@/data/biblia";
+import type { BiblePerson, PositionedPerson } from "@/data/biblia";
 
 const NODE_HEIGHT = 54;
 const HORIZONTAL_GAP = 196;
@@ -61,52 +61,93 @@ const SIBLING_ORDER: Record<string, string[]> = {
   ],
 };
 
+interface PersonBranch {
+  id: string;
+  from: PositionedPerson;
+  to: PositionedPerson[];
+}
+
 function createTree(
   peopleById: Map<string, BiblePerson>,
   childrenById: Map<string, BiblePerson[]>,
 ) {
   const positions = new Map<string, PositionedPerson>();
-  const edges: PersonEdge[] = [];
   const root = peopleById.get(ROOT_PERSON_ID);
   const levels: BiblePerson[][] = root ? [[root]] : [];
   const visited = new Set(root ? [root.id] : []);
+  const treeChildren = new Map<string, BiblePerson[]>();
 
   for (let depth = 0; depth < levels.length; depth += 1) {
     const level = levels[depth];
-    level.forEach((person, index) => {
-      positions.set(person.id, {
-        person,
-        x: (index - (level.length - 1) / 2) * HORIZONTAL_GAP,
-        y: 58 + depth * VERTICAL_GAP,
-        childCount: (childrenById.get(person.id) ?? []).length,
-      });
-    });
-
-    const nextLevel = level.flatMap((person) =>
-      (childrenById.get(person.id) ?? []).filter((child) => {
+    const nextLevel: BiblePerson[] = [];
+    for (const person of level) {
+      const children = (childrenById.get(person.id) ?? []).filter((child) => {
         if (visited.has(child.id)) return false;
         visited.add(child.id);
         return true;
-      }),
-    );
+      });
+      treeChildren.set(person.id, children);
+      nextLevel.push(...children);
+    }
     if (nextLevel.length > 0) levels.push(nextLevel);
   }
 
-  for (const positioned of positions.values()) {
-    const parentId = positioned.person.connectionId;
-    const parent = parentId ? positions.get(parentId) : undefined;
-    if (parent) {
-      edges.push({
-        id: `${parent.person.id}-${positioned.person.id}`,
-        from: parent,
-        to: positioned,
-      });
+  let leafIndex = 0;
+  function positionSubtree(
+    person: BiblePerson,
+    depth: number,
+  ): { left: number; right: number } {
+    const children = treeChildren.get(person.id) ?? [];
+    let left: number;
+    let right: number;
+
+    if (children.length === 0) {
+      left = leafIndex * HORIZONTAL_GAP;
+      right = left;
+      leafIndex += 1;
+    } else {
+      const childBounds = children.map((child) =>
+        positionSubtree(child, depth + 1),
+      );
+      left = childBounds[0].left;
+      right = childBounds[childBounds.length - 1].right;
+    }
+
+    positions.set(person.id, {
+      person,
+      x: (left + right) / 2,
+      y: 58 + depth * VERTICAL_GAP,
+      childCount: children.length,
+    });
+    return { left, right };
+  }
+
+  if (root) {
+    const rootBounds = positionSubtree(root, 0);
+    const centerX = (rootBounds.left + rootBounds.right) / 2;
+    for (const position of positions.values()) {
+      position.x -= centerX;
     }
   }
 
-  const width = Math.max(900, ...levels.map((level) => level.length * HORIZONTAL_GAP));
-  const height = Math.max(650, levels.length * VERTICAL_GAP + 80);
-  return { positions, edges, width, height };
+  const branches: PersonBranch[] = [];
+  for (const [parentId, children] of treeChildren) {
+    if (children.length === 0) continue;
+    const from = positions.get(parentId);
+    if (!from) throw new Error(`Missing tree position for ${parentId}`);
+    const to = children.map((child) => {
+      const position = positions.get(child.id);
+      if (!position) throw new Error(`Missing tree position for ${child.id}`);
+      return position;
+    });
+    branches.push({
+      id: parentId,
+      from,
+      to,
+    });
+  }
+
+  return { positions, branches };
 }
 
 function normalize(value: string) {
@@ -337,7 +378,7 @@ export function ArvoreBiblica() {
         <div className="genealogy-card-heading">
           <div>
             <h2>Genealogia bíblica</h2>
-            <p>Todas as {BIBLICAL_NODES.length} pessoas aparecem de uma vez</p>
+            <p>{BIBLICAL_NODES.length} pessoas organizadas por geração e linhagem</p>
           </div>
           <span className="all-loaded"><i /> Árvore completa</span>
         </div>
@@ -361,14 +402,19 @@ export function ArvoreBiblica() {
           >
             <g transform={`translate(${viewport.x} ${viewport.y}) scale(${viewport.scale})`}>
               <g aria-hidden="true" className="genealogy-edges">
-                {tree.edges.map(({ id, from, to }) => {
+                {tree.branches.map(({ id, from, to }) => {
                   const startY = from.y + NODE_HEIGHT / 2;
-                  const endY = to.y - NODE_HEIGHT / 2;
-                  const midY = (startY + endY) / 2;
-                  const path =
-                    from.x === to.x
-                      ? `M ${from.x} ${startY} V ${endY}`
-                      : `M ${from.x} ${startY} V ${midY} H ${to.x} V ${endY}`;
+                  const branchY = startY + VERTICAL_GAP / 2;
+                  const path = to.length === 1
+                    ? `M ${from.x} ${startY} V ${to[0].y - NODE_HEIGHT / 2}`
+                    : [
+                        `M ${from.x} ${startY} V ${branchY}`,
+                        `M ${to[0].x} ${branchY} H ${to[to.length - 1].x}`,
+                        ...to.map(
+                          (child) =>
+                            `M ${child.x} ${branchY} V ${child.y - NODE_HEIGHT / 2}`,
+                        ),
+                      ].join(" ");
                   return <path d={path} key={id} />;
                 })}
               </g>
