@@ -75,6 +75,29 @@ input:focus-visible,
   display: flex;
 }
 
+.visit-counter {
+  align-items: center;
+  background: #f6f8f5;
+  border: 1px solid #eaede8;
+  border-radius: 8px;
+  color: #788078;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  padding: 7px 10px;
+}
+
+.visit-counter-label {
+  font-size: 10px;
+}
+
+.visit-counter-value {
+  color: var(--green-dark);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
 .genealogy-title {
   gap: 12px;
 }
@@ -625,6 +648,15 @@ input:focus-visible,
     gap: 8px;
   }
 
+  .visit-counter {
+    gap: 5px;
+    padding: 7px;
+  }
+
+  .visit-counter-label {
+    font-size: 9px;
+  }
+
   .genealogy-title p {
     font-size: 7px;
   }
@@ -704,6 +736,15 @@ input:focus-visible,
 
   .genealogy-title p {
     letter-spacing: 0.08em;
+  }
+
+  .visit-counter {
+    gap: 0;
+    padding: 6px;
+  }
+
+  .visit-counter-label {
+    display: none;
   }
 
   .search-wrap input {

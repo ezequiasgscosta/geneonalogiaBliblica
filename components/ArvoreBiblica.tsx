@@ -10,6 +10,7 @@ import {
 } from "react";
 import { BIBLICAL_NODES, ROOT_PERSON_ID } from "@/data/biblia";
 import { BarraPesquisa } from "@/components/BarraPesquisa";
+import { ContadorVisitas } from "@/components/ContadorVisitas";
 import { NoBiblico } from "@/components/NoBiblico";
 import { PainelPersonagem } from "@/components/PainelPersonagem";
 import type { BiblePerson, PersonEdge, PositionedPerson } from "@/data/biblia";
@@ -320,6 +321,7 @@ export function ArvoreBiblica() {
             <h1>Deus <span>até</span> Apocalipse</h1>
           </div>
         </div>
+        <ContadorVisitas />
         <div className="genealogy-search">
           <BarraPesquisa
             onQueryChange={setQuery}

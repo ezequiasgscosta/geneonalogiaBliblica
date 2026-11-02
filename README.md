@@ -6,7 +6,7 @@ Uma única árvore interativa mostra pessoas bíblicas e suas conexões, da prim
 
 - Árvore completa de pessoas, com vínculos de descendência, parentesco, adoção ou discipulado identificados.
 - Arraste com mouse ou toque para percorrer a árvore.
-- Controles de zoom, pesquisa de pessoas e painel com referências bíblicas.
+- Controles de zoom, pesquisa de pessoas, contador de visitas por navegador e painel com referências bíblicas.
 - Catálogo tipado em `data/biblia.ts`, separado dos componentes.
 
 ## Desenvolvimento
